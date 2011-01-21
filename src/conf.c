@@ -20,6 +20,7 @@
 #include "config.h"
 #include "conf.h"
 #include "utils.h"
+#include "string_util.h"
 #include "tokenizer.h"
 #include "path.h"
 #include "glib_compat.h"
@@ -269,7 +270,7 @@ config_read_block(FILE *fp, int *count, char *string, GError **error_r)
 		}
 
 		(*count)++;
-		line = g_strchug(line);
+		line = strchug_fast(line);
 		if (*line == 0 || *line == CONF_COMMENT)
 			continue;
 
@@ -277,7 +278,7 @@ config_read_block(FILE *fp, int *count, char *string, GError **error_r)
 			/* end of this block; return from the function
 			   (and from this "while" loop) */
 
-			line = g_strchug(line + 1);
+			line = strchug_fast(line + 1);
 			if (*line != 0 && *line != CONF_COMMENT) {
 				config_param_free(ret);
 				g_set_error(error_r, config_quark(), 0,
@@ -355,7 +356,7 @@ config_read_file(const char *file, GError **error_r)
 
 		count++;
 
-		line = g_strchug(string);
+		line = strchug_fast(string);
 		if (*line == 0 || *line == CONF_COMMENT)
 			continue;
 
@@ -401,7 +402,7 @@ config_read_file(const char *file, GError **error_r)
 				return false;
 			}
 
-			line = g_strchug(line + 1);
+			line = strchug_fast(line + 1);
 			if (*line != 0 && *line != CONF_COMMENT) {
 				g_set_error(error_r, config_quark(), 0,
 					    "line %i: Unknown tokens after '{'",

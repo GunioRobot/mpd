@@ -1,5 +1,5 @@
 AC_PREREQ(2.60)
-AC_INIT(mpd, 0.16~git, musicpd-dev-team@lists.sourceforge.net)
+AC_INIT(mpd, 0.17~git, musicpd-dev-team@lists.sourceforge.net)
 AC_CONFIG_SRCDIR([src/main.c])
 AM_INIT_AUTOMAKE([foreign 1.10 dist-bzip2 subdir-objects])
 AM_CONFIG_HEADER(config.h)
@@ -13,6 +13,7 @@ dnl Programs
 dnl ---------------------------------------------------------------------------
 AC_PROG_CC_C99
 AC_PROG_CXX
+AC_PROG_RANLIB
 
 HAVE_CXX=yes
 if test x$CXX = xg++; then
@@ -135,6 +136,11 @@ AC_ARG_ENABLE(bzip2,
 		[enable bzip2 archive support (default: disabled)]),,
 	enable_bzip2=no)
 
+AC_ARG_ENABLE(cdio-paranoia,
+	AS_HELP_STRING([--enable-cdio-paranoia],
+		[enable support for audio CD support]),,
+	enable_cdio_paranoia=auto)
+
 AC_ARG_ENABLE(cue,
 	AS_HELP_STRING([--enable-cue],
 		[enable support for libcue support]),,
@@ -154,6 +160,10 @@ AC_ARG_ENABLE(documentation,
 	AS_HELP_STRING([--enable-documentation],
 		[build documentation (default: disable)]),,
 	[enable_documentation=no])
+
+AC_ARG_ENABLE(ffado,
+	AS_HELP_STRING([--enable-ffado], [enable libffado (FireWire) support]),,
+	[enable_ffado=no])
 
 AC_ARG_ENABLE(ffmpeg,
 	AS_HELP_STRING([--enable-ffmpeg],
@@ -629,6 +639,16 @@ if test x$enable_lastfm = xyes; then
 fi
 AM_CONDITIONAL(ENABLE_LASTFM, test x$enable_lastfm = xyes)
 
+dnl ---------------------------------- libcue ---------------------------------
+MPD_AUTO_PKG(cdio_paranoia, CDIO_PARANOIA, [libcdio_paranoia],
+	[libcdio_paranoia audio CD library], [libcdio_paranoia not found])
+if test x$enable_cdio_paranoia = xyes; then
+	AC_DEFINE([ENABLE_CDIO_PARANOIA], 1,
+		[Define to enable libcdio_paranoia support])
+fi
+
+AM_CONDITIONAL(ENABLE_CDIO_PARANOIA, test x$enable_cdio_paranoia = xyes)
+
 dnl ---------------------------------- libogg ---------------------------------
 if test x$with_tremor == xno || test -z $with_tremor; then
 	PKG_CHECK_MODULES(OGG, [ogg], enable_ogg=yes, enable_ogg=no)
@@ -844,15 +864,6 @@ if test x$enable_modplug = xyes; then
 	AC_DEFINE(HAVE_MODPLUG, 1, [Define for modplug support])
 fi
 AM_CONDITIONAL(HAVE_MODPLUG, test x$enable_modplug = xyes)
-
-dnl --------------------------- sndfile/modplug test --------------------------
-if test x$enable_sndfile = xauto && test x$enable_modplug = xyes; then
-	dnl If modplug is enabled, enable sndfile only if explicitly
-	dnl requested - modplug's modplug/sndfile.h is known to
-	dnl conflict with libsndfile's sndfile.h.
-	AC_MSG_NOTICE([disabling libsndfile auto-detection, because the modplug decoder is enabled])
-	enable_sndfile=no
-fi
 
 dnl -------------------------------- libsndfile -------------------------------
 dnl See above test, which may disable this.
@@ -1205,6 +1216,17 @@ fi
 
 AM_CONDITIONAL(HAVE_ALSA, test x$enable_alsa = xyes)
 
+dnl ----------------------------------- FFADO ---------------------------------
+
+MPD_AUTO_PKG(ffado, FFADO, [libffado],
+	[libffado output plugin], [libffado not found])
+
+if test x$enable_ffado = xyes; then
+	AC_DEFINE(ENABLE_FFADO_OUTPUT, 1, [Define to enable the libffado output plugin])
+fi
+
+AM_CONDITIONAL(ENABLE_FFADO_OUTPUT, test x$enable_ffado = xyes)
+
 dnl ----------------------------------- FIFO ----------------------------------
 if test x$enable_fifo = xyes; then
 	AC_CHECK_FUNC([mkfifo],
@@ -1304,7 +1326,7 @@ enable_osx=no
 case "$host_os" in
 	darwin*)
 		AC_DEFINE(HAVE_OSX, 1, [Define for compiling OS X support])
-		MPD_LIBS="$MPD_LIBS -framework AudioUnit -framework CoreServices"
+		MPD_LIBS="$MPD_LIBS -framework AudioUnit -framework CoreAudio -framework CoreServices"
 		enable_osx=yes ;;
 esac
 
@@ -1375,26 +1397,27 @@ esac
 
 AM_CONDITIONAL(ENABLE_SOLARIS_OUTPUT, test x$enable_solaris_output = xyes)
 
-dnl --------------------------------- Solaris ---------------------------------
+dnl --------------------------------- WinMM ---------------------------------
 
 case "$host_os" in
 	mingw32* | windows*)
-		AC_DEFINE(ENABLE_WIN32_OUTPUT, 1, [Define to enable WIN32 wave support])
-		enable_win32_output=yes
+		AC_DEFINE(ENABLE_WINMM_OUTPUT, 1, [Define to enable WinMM support])
+		enable_winmm_output=yes
 		MPD_LIBS="$MPD_LIBS -lwinmm"
 		;;
 
 	*)
-		enable_win32_output=no
+		enable_winmm_output=no
 		;;
 esac
 
-AM_CONDITIONAL(ENABLE_WIN32_OUTPUT, test x$enable_win32_output = xyes)
+AM_CONDITIONAL(ENABLE_WINMM_OUTPUT, test x$enable_winmm_output = xyes)
 
 dnl --------------------- Post Audio Output Plugins Tests ---------------------
 if
 	test x$enable_alsa = xno &&
 	test x$enable_ao = xno &&
+	test x$enable_ffado = xno &&
 	test x$enable_fifo = xno &&
 	test x$enable_httpd_output = xno &&
 	test x$enable_jack = xno &&
@@ -1407,7 +1430,7 @@ if
 	test x$enable_recorder_output = xno &&
 	test x$enable_shout = xno &&
 	test x$enable_solaris_output = xno &&
-	test x$enable_win32_output = xno &&
+	test x$enable_winmm_output = xno &&
 
 		AC_MSG_ERROR([No Audio Output types configured!])
 fi
@@ -1479,23 +1502,23 @@ dnl ---------------------------------------------------------------------------
 echo ''
 echo '########### MPD CONFIGURATION ############'
 
-echo -ne '\nArchive support:\n\t'
+printf '\nArchive support:\n\t'
 results(bzip2,[bzip2])
 results(iso9660,[ISO9660])
 results(zzip,[ZIP])
 
 if test x$with_zeroconf != xno; then
-	echo -ne '\nAutodiscovery support:\n\t'
+	printf '\nAutodiscovery support:\n\t'
 	results(avahi, [Avahi])
 	results(bonjour, [Bonjour])
 fi
 
-echo -ne '\nClient support:\n\t'
+printf '\nClient support:\n\t'
 results(ipv6, "IPv6")
 results(tcp, "TCP")
 results(un,[UNIX Domain Sockets])
 
-echo -ne '\nFile format support:\n\t'
+printf '\nFile format support:\n\t'
 results(aac, [AAC])
 results(sidplay, [C64 SID])
 results(ffmpeg, [FFMPEG])
@@ -1503,7 +1526,7 @@ results(flac, [FLAC])
 results(fluidsynth, [FluidSynth])
 results(gme, [GME])
 results(sndfile, [libsndfile])
-echo -ne '\n\t'
+printf '\n\t'
 results(mikmod, [MikMod])
 results(modplug, [MODPLUG])
 results(mad, [MAD])
@@ -1511,46 +1534,47 @@ results(mpg123, [MPG123])
 results(mp4, [MP4])
 results(mpc, [Musepack])
 results(oggflac, [OggFLAC], flac)
-echo -ne '\n\t'
+printf '\n\t'
 results(tremor, [OggTremor])
 results(vorbis, [OggVorbis])
 results(audiofile, [WAVE])
 results(wavpack, [WavPack])
 results(wildmidi, [WildMidi])
 
-echo -en '\nOther features:\n\t'
+printf '\nOther features:\n\t'
 results(lsr, [libsamplerate])
 results(inotify, [inotify])
 results(sqlite, [SQLite])
 
-echo -en '\nMetadata support:\n\t'
+printf '\nMetadata support:\n\t'
 results(cue,[cue])
 results(id3,[ID3])
 
-echo -en '\nPlayback support:\n\t'
+printf '\nPlayback support:\n\t'
 results(alsa,ALSA)
+results(ffado,FFADO)
 results(fifo,FIFO)
 results(recorder_output,[File Recorder])
 results(httpd_output,[HTTP Daemon])
 results(jack,[JACK])
 results(ao,[libao])
 results(oss,[OSS])
-echo -ne '\n\t'
+printf '\n\t'
 results(openal,[OpenAL])
 results(osx, [OS X])
 results(pipe_output, [Pipeline])
 results(pulse, [PulseAudio])
 results(mvp, [Media MVP])
 results(shout, [SHOUTcast])
-echo -ne '\n\t'
+printf '\n\t'
 results(solaris, [Solaris])
-results(win32_output, [WIN32 wave])
+results(winmm_output, [WinMM])
 
 if
 	test x$enable_shout = xyes ||
 	test x$enable_recorder = xyes ||
 	test x$enable_httpd_output = xyes; then
-		echo -en '\nStreaming encoder support:\n\t'
+		printf '\nStreaming encoder support:\n\t'
 		results(flac_encoder, [FLAC])
 		results(lame_encoder, [LAME])
 		results(vorbis_encoder, [Ogg Vorbis])
@@ -1558,23 +1582,20 @@ if
 		results(wave_encoder, [WAVE])
 fi
 
-echo -en '\nStreaming support:\n\t'
+printf '\nStreaming support:\n\t'
 results(curl,[CURL])
 results(lastfm,[Last.FM])
 results(mms,[MMS])
+results(cdio_paranoia, [CDIO_PARANOIA])
 
-echo -ne '\n\n##########################################\n\n'
+printf '\n\n##########################################\n\n'
 
-if test x$enable_sndfile = xyes && test x$enable_modplug = xyes; then
-	AC_MSG_WARN([compilation may fail, because libmodplug conflicts with libsndfile])
-	AC_MSG_WARN([libmodplug ships modplug/sndfile.h, which hides libsndfile's sndfile.h])
-fi
-
-echo -ne 'Generating files needed for compilation\n'
+echo 'Generating files needed for compilation'
 
 dnl ---------------------------------------------------------------------------
 dnl Generate files
 dnl ---------------------------------------------------------------------------
 AC_OUTPUT(Makefile)
+AC_OUTPUT(doc/doxygen.conf)
 
 echo 'MPD is ready for compilation, type "make" to begin.'

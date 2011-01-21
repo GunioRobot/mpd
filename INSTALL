@@ -59,6 +59,9 @@ You also need an encoder: either libvorbisenc (ogg), or liblame (mp3).
 OpenAL - http://kcat.strangesoft.net/openal.html
 Open Audio Library
 
+libffado - http://www.ffado.org/
+For FireWire audio devices.
+
 
 Optional Input Dependencies
 ---------------------------
@@ -137,6 +140,9 @@ For the sticker database.
 
 libcue - http://libcue.sourceforge.net/
 For CUE sheet support.
+
+libcdio - http://www.gnu.org/software/libcdio/
+For playing audio CDs.
 
 
 pkg-config

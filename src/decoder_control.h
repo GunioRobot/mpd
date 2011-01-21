@@ -58,6 +58,12 @@ struct decoder_control {
 	 */
 	GCond *cond;
 
+	/**
+	 * The trigger of this object's client.  It is signalled
+	 * whenever an event occurs.
+	 */
+	GCond *client_cond;
+
 	enum decoder_state state;
 	enum decoder_command command;
 
@@ -97,11 +103,12 @@ struct decoder_control {
 	char *mixramp_prev_end;
 };
 
-void
-dc_init(struct decoder_control *dc);
+G_GNUC_MALLOC
+struct decoder_control *
+dc_new(GCond *client_cond);
 
 void
-dc_deinit(struct decoder_control *dc);
+dc_free(struct decoder_control *dc);
 
 /**
  * Locks the #decoder_control object.
@@ -216,9 +223,6 @@ decoder_current_song(const struct decoder_control *dc)
 	assert(false);
 	return NULL;
 }
-
-void
-dc_command_wait(struct decoder_control *dc);
 
 /**
  * Start the decoder.

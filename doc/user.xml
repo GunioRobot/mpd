@@ -236,6 +236,16 @@ cd mpd-version</programlisting>
     </section>
 
     <section>
+      <title>Configuring encoder plugins</title>
+
+      <para>
+        Encoders are used by some of the output plugins (such as
+        <varname>shout</varname>).  The encoder settings are included
+        in the <varname>audio_output</varname> section.
+      </para>
+    </section>
+
+    <section>
       <title>Configuring audio outputs</title>
 
       <para>
@@ -621,6 +631,17 @@ cd mpd-version</programlisting>
           Plays streams with the MMS protocol.
         </para>
       </section>
+
+      <section>
+        <title><varname>cdio_paranoia</varname></title>
+
+        <para>
+          Plays audio CDs.  The URI has the form:
+          "<filename>cdda://[DEVICE][/TRACK]</filename>".  The
+          simplest form <filename>cdda://</filename> plays the whole
+          disc in the default drive.
+        </para>
+      </section>
     </section>
 
     <section>
@@ -654,6 +675,178 @@ cd mpd-version</programlisting>
             </tbody>
           </tgroup>
         </informaltable>
+      </section>
+    </section>
+
+    <section>
+      <title>Encoder plugins</title>
+
+      <section>
+        <title><varname>flac</varname></title>
+
+        <para>
+          Encodes into FLAC (lossless).
+        </para>
+
+        <informaltable>
+          <tgroup cols="2">
+            <thead>
+              <row>
+                <entry>Setting</entry>
+                <entry>Description</entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry>
+                  <varname>compression</varname>
+                </entry>
+                <entry>
+                  Sets the <filename>libFLAC</filename> compression
+                  level.  The levels range from 0 (fastest, least
+                  compression) to 8 (slowest, most compression).
+                </entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable>
+      </section>
+
+      <section>
+        <title><varname>lame</varname></title>
+
+        <para>
+          Encodes into MP3 using the LAME library.
+        </para>
+
+        <informaltable>
+          <tgroup cols="2">
+            <thead>
+              <row>
+                <entry>Setting</entry>
+                <entry>Description</entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry>
+                  <varname>quality</varname>
+                </entry>
+                <entry>
+                  Sets the quality for VBR.  0 is the highest quality,
+                  9 is the lowest quality.  Cannot be used with
+                  <varname>bitrate</varname>.
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <varname>bitrate</varname>
+                </entry>
+                <entry>
+                  Sets the bit rate in kilobit per second.  Cannot be
+                  used with <varname>quality</varname>.
+                </entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable>
+      </section>
+
+      <section>
+        <title><varname>null</varname></title>
+
+        <para>
+          Does not encode anything, passes the input PCM data as-is.
+        </para>
+      </section>
+
+      <section>
+        <title><varname>twolame</varname></title>
+
+        <para>
+          Encodes into MP2 using the <filename>twolame</filename>
+          library.
+        </para>
+
+        <informaltable>
+          <tgroup cols="2">
+            <thead>
+              <row>
+                <entry>Setting</entry>
+                <entry>Description</entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry>
+                  <varname>quality</varname>
+                </entry>
+                <entry>
+                  Sets the quality for VBR.  0 is the highest quality,
+                  9 is the lowest quality.  Cannot be used with
+                  <varname>bitrate</varname>.
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <varname>bitrate</varname>
+                </entry>
+                <entry>
+                  Sets the bit rate in kilobit per second.  Cannot be
+                  used with <varname>quality</varname>.
+                </entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable>
+      </section>
+
+      <section>
+        <title><varname>vorbis</varname></title>
+
+        <para>
+          Encodes into Ogg Vorbis.
+        </para>
+
+        <informaltable>
+          <tgroup cols="2">
+            <thead>
+              <row>
+                <entry>Setting</entry>
+                <entry>Description</entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry>
+                  <varname>quality</varname>
+                </entry>
+                <entry>
+                  Sets the quality for VBR.  -1 is the lowest quality,
+                  10 is the highest quality.  Cannot be used with
+                  <varname>bitrate</varname>.
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <varname>bitrate</varname>
+                </entry>
+                <entry>
+                  Sets the bit rate in kilobit per second.  Cannot be
+                  used with <varname>quality</varname>.
+                </entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable>
+      </section>
+
+      <section>
+        <title><varname>wave</varname></title>
+
+        <para>
+          Encodes into WAV (lossless).
+        </para>
       </section>
     </section>
 
@@ -786,6 +979,43 @@ cd mpd-version</programlisting>
           FIFO (First In, First Out) file.  The data can be read by
           another program.
         </para>
+      </section>
+
+      <section>
+        <title><varname>ffado</varname></title>
+
+        <para>
+          The <varname>ffado</varname> plugin connects to FireWire
+          audio devices via <filename>libffado</filename>.
+        </para>
+
+        <para>
+          Warning: this plugin was not tested successfully.  I just
+          couldn't keep libffado2 from crashing.  Use at your own
+          risk.
+        </para>
+
+        <informaltable>
+          <tgroup cols="2">
+            <thead>
+              <row>
+                <entry>Setting</entry>
+                <entry>Description</entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry>
+                  <varname>device</varname>
+                  <parameter>NAME</parameter>
+                </entry>
+                <entry>
+                  Sets the device which should be used, e.g. "hw:0".
+                </entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable>
       </section>
 
       <section>

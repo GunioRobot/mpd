@@ -33,15 +33,4 @@
 
 char *parsePath(char *path);
 
-/**
- * Checks whether a string array contains the specified string.
- *
- * @param haystack a NULL terminated list of strings
- * @param needle the string to search for; the comparison is
- * case-insensitive for ASCII characters
- * @return true if found
- */
-bool
-string_array_contains(const char *const* haystack, const char *needle);
-
 #endif

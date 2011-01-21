@@ -27,6 +27,7 @@
 #include "buffer.h"
 #include "player_control.h"
 #include "mpd_error.h"
+#include "notify.h"
 
 #ifndef NDEBUG
 #include "chunk.h"
@@ -100,7 +101,7 @@ audio_output_config_count(void)
 }
 
 void
-audio_output_all_init(void)
+audio_output_all_init(struct player_control *pc)
 {
 	const struct config_param *param = NULL;
 	unsigned int i;
@@ -121,7 +122,7 @@ audio_output_all_init(void)
 		/* only allow param to be NULL if there just one audioOutput */
 		assert(param || (num_audio_outputs == 1));
 
-		if (!audio_output_init(output, param, &error)) {
+		if (!audio_output_init(output, param, pc, &error)) {
 			if (param != NULL)
 				MPD_ERROR("line %i: %s",
 					  param->line, error->message);
@@ -323,7 +324,7 @@ audio_output_all_open(const struct audio_format *audio_format,
 	else
 		/* if the pipe hasn't been cleared, the the audio
 		   format must not have changed */
-		assert(music_pipe_size(g_mp) == 0 ||
+		assert(music_pipe_empty(g_mp) ||
 		       audio_format_equals(audio_format,
 					   &input_audio_format));
 
@@ -436,7 +437,7 @@ audio_output_all_check(void)
 	assert(g_mp != NULL);
 
 	while ((chunk = music_pipe_peek(g_mp)) != NULL) {
-		assert(music_pipe_size(g_mp) > 0);
+		assert(!music_pipe_empty(g_mp));
 
 		if (!chunk_is_consumed(chunk))
 			/* at least one output is not finished playing
@@ -473,17 +474,17 @@ audio_output_all_check(void)
 }
 
 bool
-audio_output_all_wait(unsigned threshold)
+audio_output_all_wait(struct player_control *pc, unsigned threshold)
 {
-	player_lock();
+	player_lock(pc);
 
 	if (audio_output_all_check() < threshold) {
-		player_unlock();
+		player_unlock(pc);
 		return true;
 	}
 
-	player_wait();
-	player_unlock();
+	player_wait(pc);
+	player_unlock(pc);
 
 	return audio_output_all_check() < threshold;
 }

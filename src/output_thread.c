@@ -29,6 +29,7 @@
 #include "filter/convert_filter_plugin.h"
 #include "filter/replay_gain_filter_plugin.h"
 #include "mpd_error.h"
+#include "notify.h"
 
 #include <glib.h>
 
@@ -134,9 +135,17 @@ ao_open(struct audio_output *ao)
 	struct audio_format_string af_string;
 
 	assert(!ao->open);
-	assert(ao->fail_timer == NULL);
 	assert(ao->pipe != NULL);
 	assert(ao->chunk == NULL);
+
+	if (ao->fail_timer != NULL) {
+		/* this can only happen when this
+		   output thread fails while
+		   audio_output_open() is run in the
+		   player thread */
+		g_timer_destroy(ao->fail_timer);
+		ao->fail_timer = NULL;
+	}
 
 	/* enable the device (just in case the last enable has failed) */
 
@@ -278,6 +287,30 @@ ao_reopen(struct audio_output *ao)
 		ao_open(ao);
 }
 
+/**
+ * Wait until the output's delay reaches zero.
+ *
+ * @return true if playback should be continued, false if a command
+ * was issued
+ */
+static bool
+ao_wait(struct audio_output *ao)
+{
+	while (true) {
+		unsigned delay = ao_plugin_delay(ao->plugin, ao->data);
+		if (delay == 0)
+			return true;
+
+		GTimeVal tv;
+		g_get_current_time(&tv);
+		g_time_val_add(&tv, delay * 1000);
+		(void)g_cond_timed_wait(ao->cond, ao->mutex, &tv);
+
+		if (ao->command != AO_COMMAND_NONE)
+			return false;
+	}
+}
+
 static const char *
 ao_chunk_data(struct audio_output *ao, const struct music_chunk *chunk,
 	      struct filter *replay_gain_filter,
@@ -414,6 +447,9 @@ ao_play_chunk(struct audio_output *ao, const struct music_chunk *chunk)
 	while (size > 0 && ao->command == AO_COMMAND_NONE) {
 		size_t nbytes;
 
+		if (!ao_wait(ao))
+			break;
+
 		g_mutex_unlock(ao->mutex);
 		nbytes = ao_plugin_play(ao->plugin, ao->data, data, size,
 					&error);
@@ -428,7 +464,9 @@ ao_play_chunk(struct audio_output *ao, const struct music_chunk *chunk)
 
 			/* don't automatically reopen this device for
 			   10 seconds */
+			assert(ao->fail_timer == NULL);
 			ao->fail_timer = g_timer_new();
+
 			return false;
 		}
 
@@ -493,7 +531,7 @@ ao_play(struct audio_output *ao)
 	ao->chunk_finished = true;
 
 	g_mutex_unlock(ao->mutex);
-	player_lock_signal();
+	player_lock_signal(ao->player_control);
 	g_mutex_lock(ao->mutex);
 
 	return true;
@@ -511,6 +549,9 @@ static void ao_pause(struct audio_output *ao)
 	ao_command_finished(ao);
 
 	do {
+		if (!ao_wait(ao))
+			break;
+
 		g_mutex_unlock(ao->mutex);
 		ret = ao_plugin_pause(ao->plugin, ao->data);
 		g_mutex_lock(ao->mutex);

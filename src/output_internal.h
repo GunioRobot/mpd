@@ -196,7 +196,8 @@ struct audio_output {
 	const struct music_pipe *pipe;
 
 	/**
-	 * This mutex protects #open, #chunk and #chunk_finished.
+	 * This mutex protects #open, #fail_timer, #chunk and
+	 * #chunk_finished.
 	 */
 	GMutex *mutex;
 
@@ -205,6 +206,12 @@ struct audio_output {
 	 * #command has been set.
 	 */
 	GCond *cond;
+
+	/**
+	 * The player_control object which "owns" this output.  This
+	 * object is needed to signal command completion.
+	 */
+	struct player_control *player_control;
 
 	/**
 	 * The #music_chunk which is currently being played.  All

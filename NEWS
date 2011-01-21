@@ -1,4 +1,29 @@
-ver 0.16 (20??/??/??)
+ver 0.17 (2010/??/??)
+* input:
+  - cdio_paranoia: new input plugin to play audio CDs
+* decoder:
+  - mpg123: implement seeking
+* output:
+  - osx: allow user to specify other audio devices
+
+
+ver 0.16.1 (2010/01/09)
+* audio_check: fix parameter in prototype
+* add void casts to suppress "result unused" warnings (clang)
+* input:
+  - ffado: disable by default
+* decoder:
+  - mad: work around build failure on Solaris
+  - resolve modplug vs. libsndfile cflags/headers conflict
+* output:
+  - solaris: add missing parameter to open_cloexec() cal
+  - osx: fix up audio format first, then apply it to device
+* player_thread: discard empty chunks while cross-fading
+* player_thread: fix assertion failure due to early seek
+* output_thread: fix double lock
+
+
+ver 0.16 (2010/12/11)
 * protocol:
   - send song modification time to client
   - added "update" idle event
@@ -20,7 +45,9 @@ ver 0.16 (20??/??/??)
 * tags:
   - added tags "ArtistSort", "AlbumArtistSort"
   - id3: revised "performer" tag support
+  - id3: support multiple values
   - ape: MusicBrainz tags
+  - ape: support multiple values
 * decoders:
   - don't try a plugin twice (MIME type & suffix)
   - don't fall back to "mad" unless no plugin matches
@@ -35,6 +62,8 @@ ver 0.16 (20??/??/??)
   - sidplay: support sub-tunes
   - sidplay: implemented songlength database
   - sidplay: support seeking
+  - sidplay: play monaural SID tunes in mono
+  - sidplay: play mus, str, prg, x00 files
   - wavpack: activate 32 bit support
   - wavpack: allow more than 2 channels
   - mp4ff: rename plugin "mp4" to "mp4ff"
@@ -63,6 +92,7 @@ ver 0.16 (20??/??/??)
   - httpd: bind_to_address support (including IPv6)
   - oss: 24 bit support via OSS4
   - win32: new output plugin for Windows Wave
+  - shout, httpd: more responsive to control commands
   - wildcards allowed in audio_format configuration
   - consistently lock audio output objects
 * player:
@@ -85,6 +115,7 @@ ver 0.16 (20??/??/??)
   - fall back to track gain if album gain is unavailable
   - optionally use hardware mixer to apply replay gain
   - added mode "auto"
+  - parse replay gain from APE tags
 * log unused/unknown block parameters
 * removed the deprecated "error_file" option
 * save state when stopped
@@ -104,6 +135,37 @@ ver 0.16 (20??/??/??)
 * require GLib 2.12
 * added libwrap support
 * make single mode 'sticky'
+
+
+ver 0.15.16 (2010/??/??)
+* encoders:
+  - lame: explicitly configure the output sample rate
+
+
+ver 0.15.15 (2010/11/08)
+* input:
+  - rewind: fix assertion failure
+* output:
+  - shout: artist comes first in stream title
+
+
+ver 0.15.14 (2010/11/06)
+* player_thread: fix assertion failure due to wrong music pipe on seek
+* output_thread: fix assertion failure due to race condition in OPEN
+* input:
+  - rewind: fix double free bug
+* decoders:
+  - mp4ff, ffmpeg: add extension ".m4b" (audio book)
+
+
+ver 0.15.13 (2010/10/10)
+* output_thread: fix race condition after CANCEL command
+* output:
+  - httpd: fix random data in stream title
+  - httpd: MIME type audio/ogg for Ogg Vorbis
+* input:
+  - rewind: update MIME not only once
+  - rewind: enable for MMS
 
 
 ver 0.15.12 (2010/07/20)

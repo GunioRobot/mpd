@@ -38,6 +38,11 @@ enum {
 
 struct notify audio_output_client_notify;
 
+/**
+ * Waits for command completion.
+ *
+ * @param ao the #audio_output instance; must be locked
+ */
 static void ao_command_wait(struct audio_output *ao)
 {
 	while (ao->command != AO_COMMAND_NONE) {
@@ -47,20 +52,43 @@ static void ao_command_wait(struct audio_output *ao)
 	}
 }
 
-static void ao_command(struct audio_output *ao, enum audio_output_command cmd)
-{
-	assert(ao->command == AO_COMMAND_NONE);
-	ao->command = cmd;
-	g_cond_signal(ao->cond);
-	ao_command_wait(ao);
-}
-
+/**
+ * Sends a command to the #audio_output object, but does not wait for
+ * completion.
+ *
+ * @param ao the #audio_output instance; must be locked
+ */
 static void ao_command_async(struct audio_output *ao,
 			     enum audio_output_command cmd)
 {
 	assert(ao->command == AO_COMMAND_NONE);
 	ao->command = cmd;
 	g_cond_signal(ao->cond);
+}
+
+/**
+ * Sends a command to the #audio_output object and waits for
+ * completion.
+ *
+ * @param ao the #audio_output instance; must be locked
+ */
+static void
+ao_command(struct audio_output *ao, enum audio_output_command cmd)
+{
+	ao_command_async(ao, cmd);
+	ao_command_wait(ao);
+}
+
+/**
+ * Lock the #audio_output object and execute the command
+ * synchronously.
+ */
+static void
+ao_lock_command(struct audio_output *ao, enum audio_output_command cmd)
+{
+	g_mutex_lock(ao->mutex);
+	ao_command(ao, cmd);
+	g_mutex_unlock(ao->mutex);
 }
 
 void
@@ -78,9 +106,7 @@ audio_output_enable(struct audio_output *ao)
 		audio_output_thread_start(ao);
 	}
 
-	g_mutex_lock(ao->mutex);
-	ao_command(ao, AO_COMMAND_ENABLE);
-	g_mutex_unlock(ao->mutex);
+	ao_lock_command(ao, AO_COMMAND_ENABLE);
 }
 
 void
@@ -97,11 +123,15 @@ audio_output_disable(struct audio_output *ao)
 		return;
 	}
 
-	g_mutex_lock(ao->mutex);
-	ao_command(ao, AO_COMMAND_DISABLE);
-	g_mutex_unlock(ao->mutex);
+	ao_lock_command(ao, AO_COMMAND_DISABLE);
 }
 
+static void
+audio_output_close_locked(struct audio_output *ao);
+
+/**
+ * Object must be locked (and unlocked) by the caller.
+ */
 static bool
 audio_output_open(struct audio_output *ao,
 		  const struct audio_format *audio_format,
@@ -173,6 +203,8 @@ audio_output_open(struct audio_output *ao,
 static void
 audio_output_close_locked(struct audio_output *ao)
 {
+	assert(ao != NULL);
+
 	if (ao->mixer != NULL)
 		mixer_auto_close(ao->mixer);
 
@@ -251,25 +283,6 @@ void audio_output_cancel(struct audio_output *ao)
 	g_mutex_unlock(ao->mutex);
 }
 
-void audio_output_close(struct audio_output *ao)
-{
-	if (ao->mixer != NULL)
-		mixer_auto_close(ao->mixer);
-
-	g_mutex_lock(ao->mutex);
-
-	assert(!ao->open || ao->fail_timer == NULL);
-
-	if (ao->open)
-		ao_command(ao, AO_COMMAND_CLOSE);
-	else if (ao->fail_timer != NULL) {
-		g_timer_destroy(ao->fail_timer);
-		ao->fail_timer = NULL;
-	}
-
-	g_mutex_unlock(ao->mutex);
-}
-
 void
 audio_output_release(struct audio_output *ao)
 {
@@ -279,6 +292,16 @@ audio_output_release(struct audio_output *ao)
 		audio_output_close(ao);
 }
 
+void audio_output_close(struct audio_output *ao)
+{
+	assert(ao != NULL);
+	assert(!ao->open || ao->fail_timer == NULL);
+
+	g_mutex_lock(ao->mutex);
+	audio_output_close_locked(ao);
+	g_mutex_unlock(ao->mutex);
+}
+
 void audio_output_finish(struct audio_output *ao)
 {
 	audio_output_close(ao);
@@ -286,9 +309,7 @@ void audio_output_finish(struct audio_output *ao)
 	assert(ao->fail_timer == NULL);
 
 	if (ao->thread != NULL) {
-		g_mutex_lock(ao->mutex);
-		ao_command(ao, AO_COMMAND_KILL);
-		g_mutex_unlock(ao->mutex);
+		ao_lock_command(ao, AO_COMMAND_KILL);
 		g_thread_join(ao->thread);
 	}
 

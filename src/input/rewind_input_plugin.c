@@ -80,15 +80,18 @@ copy_attributes(struct input_rewind *r)
 	struct input_stream *dest = &r->base;
 	const struct input_stream *src = r->input;
 
+	assert(dest != src);
+	assert(src->mime == NULL || dest->mime != src->mime);
+
 	dest->ready = src->ready;
 	dest->seekable = src->seekable;
 	dest->size = src->size;
 	dest->offset = src->offset;
 
-	if (dest->mime == NULL && src->mime != NULL)
-		/* this is set only once, and the duplicated pointer
-		   is freed by input_stream_close() */
+	if (src->mime != NULL) {
+		g_free(dest->mime);
 		dest->mime = g_strdup(src->mime);
+	}
 }
 
 static void

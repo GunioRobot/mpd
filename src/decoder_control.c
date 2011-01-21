@@ -19,20 +19,23 @@
 
 #include "config.h"
 #include "decoder_control.h"
-#include "player_control.h"
+#include "pipe.h"
 
 #include <assert.h>
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "decoder_control"
 
-void
-dc_init(struct decoder_control *dc)
+struct decoder_control *
+dc_new(GCond *client_cond)
 {
+	struct decoder_control *dc = g_new(struct decoder_control, 1);
+
 	dc->thread = NULL;
 
 	dc->mutex = g_mutex_new();
 	dc->cond = g_cond_new();
+	dc->client_cond = client_cond;
 
 	dc->state = DECODE_STATE_STOP;
 	dc->command = DECODE_COMMAND_NONE;
@@ -42,34 +45,26 @@ dc_init(struct decoder_control *dc)
 	dc->mixramp_start = NULL;
 	dc->mixramp_end = NULL;
 	dc->mixramp_prev_end = NULL;
+
+	return dc;
 }
 
 void
-dc_deinit(struct decoder_control *dc)
+dc_free(struct decoder_control *dc)
 {
 	g_cond_free(dc->cond);
 	g_mutex_free(dc->mutex);
 	g_free(dc->mixramp_start);
 	g_free(dc->mixramp_end);
 	g_free(dc->mixramp_prev_end);
-	dc->mixramp_start = NULL;
-	dc->mixramp_end = NULL;
-	dc->mixramp_prev_end = NULL;
+	g_free(dc);
 }
 
 static void
 dc_command_wait_locked(struct decoder_control *dc)
 {
 	while (dc->command != DECODE_COMMAND_NONE)
-		player_wait_decoder(dc);
-}
-
-void
-dc_command_wait(struct decoder_control *dc)
-{
-	decoder_lock(dc);
-	dc_command_wait_locked(dc);
-	decoder_unlock(dc);
+		g_cond_wait(dc->client_cond, dc->mutex);
 }
 
 static void
@@ -106,6 +101,7 @@ dc_start(struct decoder_control *dc, struct song *song,
 	assert(song != NULL);
 	assert(buffer != NULL);
 	assert(pipe != NULL);
+	assert(music_pipe_empty(pipe));
 
 	dc->song = song;
 	dc->buffer = buffer;

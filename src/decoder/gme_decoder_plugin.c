@@ -2,10 +2,11 @@
 #include "../decoder_api.h"
 #include "audio_check.h"
 #include "uri.h"
+
+#include <glib.h>
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <glib.h>
 #include <string.h>
 
 #include <gme/gme.h>
@@ -30,18 +31,19 @@ static char *
 get_container_name(const char *path_fs)
 {
 	const char *subtune_suffix = uri_get_suffix(path_fs);
-	char *path_container=g_strdup(path_fs);
+	char *path_container = g_strdup(path_fs);
 	char *pat = g_strconcat("*/" SUBTUNE_PREFIX "???.", subtune_suffix, NULL);
-	GPatternSpec *path_with_subtune=g_pattern_spec_new(pat);
+	GPatternSpec *path_with_subtune = g_pattern_spec_new(pat);
 	g_free(pat);
-	if(!g_pattern_match(path_with_subtune,
-		strlen(path_container), path_container, NULL)){
+	if (!g_pattern_match(path_with_subtune,
+			     strlen(path_container), path_container, NULL)) {
 		g_pattern_spec_free(path_with_subtune);
 		return path_container;
-    }
+	}
 
-	char *ptr=g_strrstr(path_container, "/" SUBTUNE_PREFIX);
-	if(ptr) *ptr='\0';
+	char *ptr = g_strrstr(path_container, "/" SUBTUNE_PREFIX);
+	if (ptr != NULL)
+		*ptr='\0';
 
 	g_pattern_spec_free(path_with_subtune);
 	return path_container;
@@ -54,27 +56,26 @@ get_container_name(const char *path_fs)
 static int
 get_song_num(const char *path_fs)
 {
-    const char *subtune_suffix = uri_get_suffix(path_fs);
+	const char *subtune_suffix = uri_get_suffix(path_fs);
 	char *pat = g_strconcat("*/" SUBTUNE_PREFIX "???.", subtune_suffix, NULL);
-	GPatternSpec *path_with_subtune=g_pattern_spec_new(pat);
+	GPatternSpec *path_with_subtune = g_pattern_spec_new(pat);
 	g_free(pat);
 
-	if(g_pattern_match(path_with_subtune,
-		strlen(path_fs), path_fs, NULL)) {
-		char *sub=g_strrstr(path_fs, "/" SUBTUNE_PREFIX);
+	if (g_pattern_match(path_with_subtune,
+			    strlen(path_fs), path_fs, NULL)) {
+		char *sub = g_strrstr(path_fs, "/" SUBTUNE_PREFIX);
 		g_pattern_spec_free(path_with_subtune);
-		if(!sub){
-            return 0;
-        }
+		if(!sub)
+			return 0;
 
-		sub+=strlen("/" SUBTUNE_PREFIX);
-		int song_num=strtol(sub, NULL, 10);
+		sub += strlen("/" SUBTUNE_PREFIX);
+		int song_num = strtol(sub, NULL, 10);
 
-		return song_num-1;
-	} else
+		return song_num - 1;
+	} else {
 		g_pattern_spec_free(path_with_subtune);
 		return 0;
-
+	}
 }
 
 static char *
@@ -82,7 +83,7 @@ gme_container_scan(const char *path_fs, const unsigned int tnum)
 {
 	Music_Emu *emu;
 	const char* gme_err;
-    unsigned int num_songs;
+	unsigned int num_songs;
 
 	gme_err = gme_open_file(path_fs, &emu, GME_SAMPLE_RATE);
 	if (gme_err != NULL) {
@@ -92,11 +93,11 @@ gme_container_scan(const char *path_fs, const unsigned int tnum)
 
 	num_songs = gme_track_count(emu);
 	/* if it only contains a single tune, don't treat as container */
-    if(num_songs < 2)
+	if (num_songs < 2)
 		return NULL;
 
 	const char *subtune_suffix = uri_get_suffix(path_fs);
-	if(tnum <= num_songs){
+	if (tnum <= num_songs){
 		char *subtune = g_strdup_printf(
 			SUBTUNE_PREFIX "%03u.%s", tnum, subtune_suffix);
 		return subtune;
@@ -114,10 +115,8 @@ gme_file_decode(struct decoder *decoder, const char *path_fs)
 	enum decoder_command cmd;
 	short buf[GME_BUFFER_SAMPLES];
 	const char* gme_err;
-	char *path_container=get_container_name(path_fs);
-    int song_num;
-
-    song_num=get_song_num(path_fs);
+	char *path_container = get_container_name(path_fs);
+	int song_num = get_song_num(path_fs);
 
 	gme_err = gme_open_file(path_container, &emu, GME_SAMPLE_RATE);
 	g_free(path_container);
@@ -241,5 +240,5 @@ const struct decoder_plugin gme_decoder_plugin = {
 	.file_decode = gme_file_decode,
 	.tag_dup = gme_tag_dup,
 	.suffixes = gme_suffixes,
-    .container_scan = gme_container_scan,
+	.container_scan = gme_container_scan,
 };

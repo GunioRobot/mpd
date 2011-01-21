@@ -231,16 +231,18 @@ static enum sample_format
 ffmpeg_sample_format(G_GNUC_UNUSED const AVCodecContext *codec_context)
 {
 #if LIBAVCODEC_VERSION_INT >= ((51<<16)+(41<<8)+0)
-	int bits = (uint8_t) av_get_bits_per_sample_format(codec_context->sample_fmt);
-
-	/* XXX implement & test other sample formats */
-
-	switch (bits) {
-	case 16:
+	switch (codec_context->sample_fmt) {
+	case SAMPLE_FMT_S16:
 		return SAMPLE_FORMAT_S16;
-	}
 
-	return SAMPLE_FORMAT_UNDEFINED;
+	case SAMPLE_FMT_S32:
+		return SAMPLE_FORMAT_S32;
+
+	default:
+		g_warning("Unsupported libavcodec SampleFormat value: %d",
+			  codec_context->sample_fmt);
+		return SAMPLE_FORMAT_UNDEFINED;
+	}
 #else
 	/* XXX fixme 16-bit for older ffmpeg (13 Aug 2007) */
 	return SAMPLE_FORMAT_S16;
@@ -522,7 +524,9 @@ static const char *const ffmpeg_suffixes[] = {
 	"atrac", "au", "aud", "avi", "avm2", "avs", "bap", "bfi", "c93", "cak",
 	"cin", "cmv", "cpk", "daud", "dct", "divx", "dts", "dv", "dvd", "dxa",
 	"eac3", "film", "flac", "flc", "fli", "fll", "flx", "flv", "g726",
-	"gsm", "gxf", "iss", "m1v", "m2v", "m2t", "m2ts", "m4a", "m4v", "mad",
+	"gsm", "gxf", "iss", "m1v", "m2v", "m2t", "m2ts",
+	"m4a", "m4b", "m4v",
+	"mad",
 	"mj2", "mjpeg", "mjpg", "mka", "mkv", "mlp", "mm", "mmf", "mov", "mp+",
 	"mp1", "mp2", "mp3", "mp4", "mpc", "mpeg", "mpg", "mpga", "mpp", "mpu",
 	"mve", "mvi", "mxf", "nc", "nsv", "nut", "nuv", "oga", "ogm", "ogv",

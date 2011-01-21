@@ -72,11 +72,20 @@ apply_song_metadata(struct song *dest, const struct song *src)
 		song_free(dest);
 	}
 
+	if (dest->tag != NULL && dest->tag->time > 0 &&
+	    src->start_ms > 0 && src->end_ms == 0 &&
+	    src->start_ms / 1000 < (unsigned)dest->tag->time)
+		/* the range is open-ended, and the playlist plugin
+		   did not know the total length of the song file
+		   (e.g. last track on a CUE file); fix it up here */
+		tmp->tag->time = dest->tag->time - src->start_ms / 1000;
+
 	return tmp;
 }
 
 struct song *
-playlist_check_translate_song(struct song *song, const char *base_uri)
+playlist_check_translate_song(struct song *song, const char *base_uri,
+			      bool secure)
 {
 	struct song *dest;
 
@@ -103,16 +112,17 @@ playlist_check_translate_song(struct song *song, const char *base_uri)
 			? map_uri_fs(base_uri)
 			: map_directory_fs(db_get_root());
 
-		if (prefix == NULL || !g_str_has_prefix(uri, prefix) ||
-		    uri[strlen(prefix)] != '/') {
+		if (prefix != NULL && g_str_has_prefix(uri, prefix) &&
+		    uri[strlen(prefix)] == '/')
+			uri += strlen(prefix) + 1;
+		else if (!secure) {
 			/* local files must be relative to the music
-			   directory */
+			   directory when "secure" is enabled */
 			g_free(prefix);
 			song_free(song);
 			return NULL;
 		}
 
-		uri += strlen(prefix) + 1;
 		g_free(prefix);
 	}
 

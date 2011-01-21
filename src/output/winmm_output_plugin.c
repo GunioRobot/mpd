@@ -20,19 +20,24 @@
 #include "config.h"
 #include "output_api.h"
 #include "pcm_buffer.h"
+#include "mixer_list.h"
+#include "winmm_output_plugin.h"
 
+#include <stdlib.h>
+#include <string.h>
 #include <windows.h>
 
 #undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "win32_output"
+#define G_LOG_DOMAIN "winmm_output"
 
-struct win32_buffer {
+struct winmm_buffer {
 	struct pcm_buffer buffer;
 
 	WAVEHDR hdr;
 };
 
-struct win32_output {
+struct winmm_output {
+	UINT device_id;
 	HWAVEOUT handle;
 
 	/**
@@ -41,7 +46,7 @@ struct win32_output {
 	 */
 	HANDLE event;
 
-	struct win32_buffer buffers[8];
+	struct winmm_buffer buffers[8];
 	unsigned next_buffer;
 };
 
@@ -49,45 +54,80 @@ struct win32_output {
  * The quark used for GError.domain.
  */
 static inline GQuark
-win32_output_quark(void)
+winmm_output_quark(void)
 {
-	return g_quark_from_static_string("win32_output");
+	return g_quark_from_static_string("winmm_output");
+}
+
+HWAVEOUT
+winmm_output_get_handle(struct winmm_output* output)
+{
+	return output->handle;
 }
 
 static bool
-win32_output_test_default_device(void)
+winmm_output_test_default_device(void)
 {
-	/* we assume that Wave is always available */
-	return true;
+	return waveOutGetNumDevs() > 0;
+}
+
+static UINT
+get_device_id(const char *device_name)
+{
+	/* if device is not specified use wave mapper */
+	if (device_name == NULL)
+		return WAVE_MAPPER;
+
+	/* check for device id */
+	char *endptr;
+	UINT id = strtoul(device_name, &endptr, 0);
+	if (endptr > device_name && *endptr == 0)
+		return id;
+
+	/* check for device name */
+	for (UINT i = 0; i < waveOutGetNumDevs(); i++) {
+		WAVEOUTCAPS caps;
+		MMRESULT result = waveOutGetDevCaps(i, &caps, sizeof(caps));
+		if (result != MMSYSERR_NOERROR)
+			continue;
+		/* szPname is only 32 chars long, so it is often truncated.
+		   Use partial match to work around this. */
+		if (strstr(device_name, caps.szPname) == device_name)
+			return i;
+	}
+
+	/* fallback to wave mapper */
+	return WAVE_MAPPER;
 }
 
 static void *
-win32_output_init(G_GNUC_UNUSED const struct audio_format *audio_format,
+winmm_output_init(G_GNUC_UNUSED const struct audio_format *audio_format,
 		  G_GNUC_UNUSED const struct config_param *param,
 		  G_GNUC_UNUSED GError **error)
 {
-	struct win32_output *wo = g_new(struct win32_output, 1);
-
+	struct winmm_output *wo = g_new(struct winmm_output, 1);
+	const char *device = config_get_block_string(param, "device", NULL);
+	wo->device_id = get_device_id(device);
 	return wo;
 }
 
 static void
-win32_output_finish(void *data)
+winmm_output_finish(void *data)
 {
-	struct win32_output *wo = data;
+	struct winmm_output *wo = data;
 
 	g_free(wo);
 }
 
 static bool
-win32_output_open(void *data, struct audio_format *audio_format,
+winmm_output_open(void *data, struct audio_format *audio_format,
 		  GError **error_r)
 {
-	struct win32_output *wo = data;
+	struct winmm_output *wo = data;
 
 	wo->event = CreateEvent(NULL, false, false, NULL);
 	if (wo->event == NULL) {
-		g_set_error(error_r, win32_output_quark(), 0,
+		g_set_error(error_r, winmm_output_quark(), 0,
 			    "CreateEvent() failed");
 		return false;
 	}
@@ -119,11 +159,11 @@ win32_output_open(void *data, struct audio_format *audio_format,
 	format.wBitsPerSample = audio_format_sample_size(audio_format) * 8;
 	format.cbSize = 0;
 
-	MMRESULT result = waveOutOpen(&wo->handle, WAVE_MAPPER, &format,
+	MMRESULT result = waveOutOpen(&wo->handle, wo->device_id, &format,
 				      (DWORD_PTR)wo->event, 0, CALLBACK_EVENT);
 	if (result != MMSYSERR_NOERROR) {
 		CloseHandle(wo->event);
-		g_set_error(error_r, win32_output_quark(), result,
+		g_set_error(error_r, winmm_output_quark(), result,
 			    "waveOutOpen() failed");
 		return false;
 	}
@@ -139,9 +179,9 @@ win32_output_open(void *data, struct audio_format *audio_format,
 }
 
 static void
-win32_output_close(void *data)
+winmm_output_close(void *data)
 {
-	struct win32_output *wo = data;
+	struct winmm_output *wo = data;
 
 	for (unsigned i = 0; i < G_N_ELEMENTS(wo->buffers); ++i)
 		pcm_buffer_deinit(&wo->buffers[i].buffer);
@@ -155,13 +195,13 @@ win32_output_close(void *data)
  * Copy data into a buffer, and prepare the wave header.
  */
 static bool
-win32_set_buffer(struct win32_output *wo, struct win32_buffer *buffer,
+winmm_set_buffer(struct winmm_output *wo, struct winmm_buffer *buffer,
 		 const void *data, size_t size,
 		 GError **error_r)
 {
 	void *dest = pcm_buffer_get(&buffer->buffer, size);
 	if (dest == NULL) {
-		g_set_error(error_r, win32_output_quark(), 0,
+		g_set_error(error_r, winmm_output_quark(), 0,
 			    "Out of memory");
 		return false;
 	}
@@ -175,7 +215,7 @@ win32_set_buffer(struct win32_output *wo, struct win32_buffer *buffer,
 	MMRESULT result = waveOutPrepareHeader(wo->handle, &buffer->hdr,
 					       sizeof(buffer->hdr));
 	if (result != MMSYSERR_NOERROR) {
-		g_set_error(error_r, win32_output_quark(), result,
+		g_set_error(error_r, winmm_output_quark(), result,
 			    "waveOutPrepareHeader() failed");
 		return false;
 	}
@@ -187,7 +227,7 @@ win32_set_buffer(struct win32_output *wo, struct win32_buffer *buffer,
  * Wait until the buffer is finished.
  */
 static bool
-win32_drain_buffer(struct win32_output *wo, struct win32_buffer *buffer,
+winmm_drain_buffer(struct winmm_output *wo, struct winmm_buffer *buffer,
 		   GError **error_r)
 {
 	if ((buffer->hdr.dwFlags & WHDR_DONE) == WHDR_DONE)
@@ -201,7 +241,7 @@ win32_drain_buffer(struct win32_output *wo, struct win32_buffer *buffer,
 		if (result == MMSYSERR_NOERROR)
 			return true;
 		else if (result != WAVERR_STILLPLAYING) {
-			g_set_error(error_r, win32_output_quark(), result,
+			g_set_error(error_r, winmm_output_quark(), result,
 				    "waveOutUnprepareHeader() failed");
 			return false;
 		}
@@ -212,14 +252,14 @@ win32_drain_buffer(struct win32_output *wo, struct win32_buffer *buffer,
 }
 
 static size_t
-win32_output_play(void *data, const void *chunk, size_t size, GError **error_r)
+winmm_output_play(void *data, const void *chunk, size_t size, GError **error_r)
 {
-	struct win32_output *wo = data;
+	struct winmm_output *wo = data;
 
 	/* get the next buffer from the ring and prepare it */
-	struct win32_buffer *buffer = &wo->buffers[wo->next_buffer];
-	if (!win32_drain_buffer(wo, buffer, error_r) ||
-	    !win32_set_buffer(wo, buffer, chunk, size, error_r))
+	struct winmm_buffer *buffer = &wo->buffers[wo->next_buffer];
+	if (!winmm_drain_buffer(wo, buffer, error_r) ||
+	    !winmm_set_buffer(wo, buffer, chunk, size, error_r))
 		return 0;
 
 	/* enqueue the buffer */
@@ -228,7 +268,7 @@ win32_output_play(void *data, const void *chunk, size_t size, GError **error_r)
 	if (result != MMSYSERR_NOERROR) {
 		waveOutUnprepareHeader(wo->handle, &buffer->hdr,
 				       sizeof(buffer->hdr));
-		g_set_error(error_r, win32_output_quark(), result,
+		g_set_error(error_r, winmm_output_quark(), result,
 			    "waveOutWrite() failed");
 		return 0;
 	}
@@ -241,56 +281,57 @@ win32_output_play(void *data, const void *chunk, size_t size, GError **error_r)
 }
 
 static bool
-win32_drain_all_buffers(struct win32_output *wo, GError **error_r)
+winmm_drain_all_buffers(struct winmm_output *wo, GError **error_r)
 {
 	for (unsigned i = wo->next_buffer; i < G_N_ELEMENTS(wo->buffers); ++i)
-		if (!win32_drain_buffer(wo, &wo->buffers[i], error_r))
+		if (!winmm_drain_buffer(wo, &wo->buffers[i], error_r))
 			return false;
 
 	for (unsigned i = 0; i < wo->next_buffer; ++i)
-		if (!win32_drain_buffer(wo, &wo->buffers[i], error_r))
+		if (!winmm_drain_buffer(wo, &wo->buffers[i], error_r))
 			return false;
 
 	return true;
 }
 
 static void
-win32_stop(struct win32_output *wo)
+winmm_stop(struct winmm_output *wo)
 {
 	waveOutReset(wo->handle);
 
 	for (unsigned i = 0; i < G_N_ELEMENTS(wo->buffers); ++i) {
-		struct win32_buffer *buffer = &wo->buffers[i];
+		struct winmm_buffer *buffer = &wo->buffers[i];
 		waveOutUnprepareHeader(wo->handle, &buffer->hdr,
 				       sizeof(buffer->hdr));
 	}
 }
 
 static void
-win32_output_drain(void *data)
+winmm_output_drain(void *data)
 {
-	struct win32_output *wo = data;
+	struct winmm_output *wo = data;
 
-	if (!win32_drain_all_buffers(wo, NULL))
-		win32_stop(wo);
+	if (!winmm_drain_all_buffers(wo, NULL))
+		winmm_stop(wo);
 }
 
 static void
-win32_output_cancel(void *data)
+winmm_output_cancel(void *data)
 {
-	struct win32_output *wo = data;
+	struct winmm_output *wo = data;
 
-	win32_stop(wo);
+	winmm_stop(wo);
 }
 
-const struct audio_output_plugin win32_output_plugin = {
-	.name = "win32",
-	.test_default_device = win32_output_test_default_device,
-	.init = win32_output_init,
-	.finish = win32_output_finish,
-	.open = win32_output_open,
-	.close = win32_output_close,
-	.play = win32_output_play,
-	.drain = win32_output_drain,
-	.cancel = win32_output_cancel,
+const struct audio_output_plugin winmm_output_plugin = {
+	.name = "winmm",
+	.test_default_device = winmm_output_test_default_device,
+	.init = winmm_output_init,
+	.finish = winmm_output_finish,
+	.open = winmm_output_open,
+	.close = winmm_output_close,
+	.play = winmm_output_play,
+	.drain = winmm_output_drain,
+	.cancel = winmm_output_cancel,
+	.mixer_plugin = &winmm_mixer_plugin,
 };
