@@ -111,6 +111,7 @@ mpd_headers = \
 	src/icy_metadata.h \
 	src/client.h \
 	src/client_internal.h \
+	src/server_socket.h \
 	src/listen.h \
 	src/log.h \
 	src/ls.h \
@@ -220,7 +221,8 @@ mpd_headers = \
 	src/archive/iso9660_archive_plugin.h \
 	src/archive/zzip_archive_plugin.h \
 	src/input/archive_input_plugin.h \
-	src/cue/cue_tag.h
+	src/cue/cue_tag.h\
+	src/mpd_error.h
 
 src_mpd_SOURCES = \
 	$(mpd_headers) \
@@ -274,6 +276,7 @@ src_mpd_SOURCES = \
 	src/client_process.c \
 	src/client_read.c \
 	src/client_write.c \
+	src/server_socket.c \
 	src/listen.c \
 	src/log.c \
 	src/ls.c \
@@ -995,6 +998,7 @@ if HAVE_LIBSAMPLERATE
 test_run_convert_SOURCES += src/pcm_resample_libsamplerate.c
 endif
 
+test_run_output_CFLAGS = $(AM_CFLAGS) $(MPD_CFLAGS)
 test_run_output_CPPFLAGS = $(AM_CPPFLAGS) \
 	$(ENCODER_CFLAGS) \
 	$(OUTPUT_CFLAGS)
@@ -1030,6 +1034,7 @@ test_run_output_SOURCES = test/run_output.c \
 	src/replay_gain_info.c \
 	src/replay_gain_config.c \
 	src/fd_util.c \
+	src/server_socket.c \
 	$(OUTPUT_SRC)
 
 test_read_mixer_CPPFLAGS = $(AM_CPPFLAGS) \
