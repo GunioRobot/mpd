@@ -1,13 +1,17 @@
-ver 0.17 (2010/??/??)
+ver 0.17 (2011/??/??)
+* protocol:
+  - support client-to-client communication
 * input:
   - cdio_paranoia: new input plugin to play audio CDs
+  - curl: enable CURLOPT_NETRC
 * decoder:
   - mpg123: implement seeking
 * output:
   - osx: allow user to specify other audio devices
+  - raop: new output plugin
 
 
-ver 0.16.1 (2010/01/09)
+ver 0.16.1 (2011/01/09)
 * audio_check: fix parameter in prototype
 * add void casts to suppress "result unused" warnings (clang)
 * input:

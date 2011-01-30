@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2010 The Music Player Daemon Project
+ * Copyright (C) 2003-2011 The Music Player Daemon Project
  * http://www.musicpd.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -51,6 +51,24 @@ pulse_output_set_volume(G_GNUC_UNUSED struct pulse_output *po,
 			G_GNUC_UNUSED GError **error_r)
 {
 	return false;
+}
+
+#endif
+
+#ifdef ENABLE_RAOP_OUTPUT
+#include "output/raop_output_plugin.h"
+
+bool
+raop_set_volume(G_GNUC_UNUSED struct raop_data *rd,
+		G_GNUC_UNUSED unsigned volume)
+{
+	return false;
+}
+
+int
+raop_get_volume(G_GNUC_UNUSED struct raop_data *rd)
+{
+	return -1;
 }
 
 #endif

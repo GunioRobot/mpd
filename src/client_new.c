@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2010 The Music Player Daemon Project
+ * Copyright (C) 2003-2011 The Music Player Daemon Project
  * http://www.musicpd.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -120,6 +120,10 @@ client_new(struct player_control *player_control,
 	client->num = next_client_num++;
 
 	client->send_buf_used = 0;
+
+	client->subscriptions = NULL;
+	client->messages = NULL;
+	client->num_messages = 0;
 
 	(void)send(fd, GREETING, sizeof(GREETING) - 1, 0);
 

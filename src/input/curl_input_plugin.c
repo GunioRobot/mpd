@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2010 The Music Player Daemon Project
+ * Copyright (C) 2003-2011 The Music Player Daemon Project
  * http://www.musicpd.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -647,6 +647,7 @@ input_curl_easy_init(struct input_curl *c, GError **error_r)
 	curl_easy_setopt(c->easy, CURLOPT_WRITEDATA, c);
 	curl_easy_setopt(c->easy, CURLOPT_HTTP200ALIASES, http_200_aliases);
 	curl_easy_setopt(c->easy, CURLOPT_FOLLOWLOCATION, 1);
+	curl_easy_setopt(c->easy, CURLOPT_NETRC, 1);
 	curl_easy_setopt(c->easy, CURLOPT_MAXREDIRS, 5);
 	curl_easy_setopt(c->easy, CURLOPT_FAILONERROR, true);
 	curl_easy_setopt(c->easy, CURLOPT_ERRORBUFFER, c->error);

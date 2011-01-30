@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2010 The Music Player Daemon Project
+ * Copyright (C) 2003-2011 The Music Player Daemon Project
  * http://www.musicpd.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -61,18 +61,5 @@ void client_vprintf(struct client *client, const char *fmt, va_list args);
  * Write a printf-like formatted string to the client.
  */
 G_GNUC_PRINTF(2, 3) void client_printf(struct client *client, const char *fmt, ...);
-
-/**
- * Adds the specified idle flags to all clients and immediately sends
- * notifications to all waiting clients.
- */
-void client_manager_idle_add(unsigned flags);
-
-/**
- * Checks whether the client has pending idle flags.  If yes, they are
- * sent immediately and "true" is returned".  If no, it puts the
- * client into waiting mode and returns false.
- */
-bool client_idle_wait(struct client *client, unsigned flags);
 
 #endif

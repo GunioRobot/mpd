@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2010 The Music Player Daemon Project
+ * Copyright (C) 2003-2011 The Music Player Daemon Project
  * http://www.musicpd.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -53,6 +53,12 @@ enum {
 
 	/** a database update has started or finished. */
 	IDLE_UPDATE = 0x100,
+
+	/** a client has subscribed or unsubscribed to/from a channel */
+	IDLE_SUBSCRIPTION = 0x200,
+
+	/** a message on the subscribed channel was receivedd */
+	IDLE_MESSAGE = 0x400,
 };
 
 /**

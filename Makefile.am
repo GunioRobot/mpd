@@ -285,6 +285,10 @@ src_mpd_SOURCES = \
 	src/client_process.c \
 	src/client_read.c \
 	src/client_write.c \
+	src/client_message.h \
+	src/client_message.c \
+	src/client_subscribe.h \
+	src/client_subscribe.c \
 	src/server_socket.c \
 	src/listen.c \
 	src/log.c \
@@ -737,6 +741,11 @@ endif
 
 if HAVE_OSX
 OUTPUT_SRC += src/output/osx_plugin.c
+endif
+
+if ENABLE_RAOP_OUTPUT
+OUTPUT_SRC += src/output/raop_output_plugin.c
+MIXER_SRC += src/mixer/raop_mixer_plugin.c
 endif
 
 if HAVE_PULSE
