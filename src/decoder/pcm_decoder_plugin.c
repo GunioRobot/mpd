@@ -44,13 +44,17 @@ pcm_stream_decode(struct decoder *decoder, struct input_stream *is)
 	if (is->size >= 0)
 		total_time = is->size / time_to_size;
 
-	decoder_initialized(decoder, &audio_format, true, total_time);
+	decoder_initialized(decoder, &audio_format, is->seekable, total_time);
 
 	do {
 		char buffer[4096];
 
 		size_t nbytes = decoder_read(decoder, is,
 					     buffer, sizeof(buffer));
+
+		if (nbytes == 0 && input_stream_eof(is))
+			break;
+
 		cmd = nbytes > 0
 			? decoder_data(decoder, is,
 				       buffer, nbytes, 0)
