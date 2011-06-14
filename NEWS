@@ -5,14 +5,27 @@ ver 0.17 (2011/??/??)
 * input:
   - cdio_paranoia: new input plugin to play audio CDs
   - curl: enable CURLOPT_NETRC
+  - ffmpeg: support libavformat 0.7
 * decoder:
   - mpg123: implement seeking
+  - ffmpeg: drop support for pre-0.5 ffmpeg
+  - ffmpeg: support libavformat 0.7
 * output:
   - osx: allow user to specify other audio devices
   - raop: new output plugin
   - shout: add possibility to set url
   - roar: new output plugin for RoarAudio
 * state_file: add option "restore_paused"
+* cue: show CUE track numbers
+
+
+ver 0.16.3 (2011/??/??)
+* fix assertion failure in audio format mask parser
+* fix NULL pointer dereference in playlist parser
+* fix playlist files in base music directory
+* database: allow directories with just playlists
+* decoder:
+  - ffmpeg: support libavcodec 0.7
 
 
 ver 0.16.2 (2011/03/18)
@@ -158,6 +171,13 @@ ver 0.16 (2010/12/11)
 * require GLib 2.12
 * added libwrap support
 * make single mode 'sticky'
+
+
+ver 0.15.17 (2011/??/??)
+* encoder:
+  - vorbis: reset the Ogg stream after flush
+* decoders:
+  - vorbis: fix tremor support
 
 
 ver 0.15.16 (2011/03/13)

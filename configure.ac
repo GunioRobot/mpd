@@ -242,6 +242,11 @@ AC_ARG_ENABLE(lastfm,
 		[enable support for last.fm radio (default: disable)]),,
 	[enable_lastfm=no])
 
+AC_ARG_ENABLE(despotify,
+	AS_HELP_STRING([--enable-despotify],
+		[enable support for despotify (default: disable)]),,
+	[enable_despotify=no])
+
 AC_ARG_ENABLE(lame-encoder,
 	AS_HELP_STRING([--enable-lame-encoder],
 		[enable the LAME mp3 encoder]),,
@@ -649,6 +654,15 @@ if test x$enable_lastfm = xyes; then
 fi
 AM_CONDITIONAL(ENABLE_LASTFM, test x$enable_lastfm = xyes)
 
+dnl --------------------------------- Despotify ---------------------------------
+MPD_AUTO_PKG(despotify, DESPOTIFY, [despotify],
+	[Despotify support], [despotify not found])
+if test x$enable_despotify = xyes; then
+	AC_DEFINE(ENABLE_DESPOTIFY, 1, [Define when despotify is enabled])
+	MPD_LIBS="$MPD_LIBS $DESPOTIFY_LIBS"
+fi
+AM_CONDITIONAL(ENABLE_DESPOTIFY, test x$enable_despotify = xyes)
+
 dnl ---------------------------------- libcue ---------------------------------
 MPD_AUTO_PKG(cdio_paranoia, CDIO_PARANOIA, [libcdio_paranoia],
 	[libcdio_paranoia audio CD library], [libcdio_paranoia not found])
@@ -757,19 +771,8 @@ AM_CONDITIONAL(HAVE_FAAD, test x$enable_aac = xyes)
 AM_CONDITIONAL(HAVE_MP4, test x$enable_mp4 = xyes)
 
 dnl ---------------------------------- ffmpeg ---------------------------------
-MPD_AUTO_PKG(ffmpeg, FFMPEG, [libavformat >= 52 libavcodec >= 51 libavutil >= 49],
+MPD_AUTO_PKG(ffmpeg, FFMPEG, [libavformat >= 52.31 libavcodec >= 52.20 libavutil >= 49.15],
 	[ffmpeg decoder library], [libavformat+libavcodec+libavutil not found])
-
-if test x$enable_ffmpeg = xyes; then
-	# prior to ffmpeg svn12865, you had to specify include files
-	# without path prefix
-	old_CPPCFLAGS=$CPPFLAGS
-	CPPFLAGS="$CPPFLAGS $FFMPEG_CFLAGS"
-	AC_CHECK_HEADER(libavcodec/avcodec.h,,
-		AC_DEFINE(OLD_FFMPEG_INCLUDES, 1,
-			[Define if avcodec.h instead of libavcodec/avcodec.h should be included]))
-	CPPCFLAGS=$old_CPPFLAGS
-fi
 
 if test x$enable_ffmpeg = xyes; then
 	AC_DEFINE(HAVE_FFMPEG, 1, [Define for FFMPEG support])
@@ -1106,7 +1109,7 @@ if
 fi
 
 AM_CONDITIONAL(HAVE_OGG_COMMON,
-	  test x$enable_vorbis = xyes || test x$enable_oggflac = xyes || test x$enable_flac = xyes)
+	test x$enable_vorbis = xyes || test x$enable_tremor = xyes || test x$enable_oggflac = xyes || test x$enable_flac = xyes)
 
 AM_CONDITIONAL(HAVE_FLAC_COMMON,
 	  test x$enable_flac = xyes || test x$enable_oggflac = xyes)
@@ -1625,6 +1628,7 @@ results(curl,[CURL])
 results(lastfm,[Last.FM])
 results(mms,[MMS])
 results(cdio_paranoia, [CDIO_PARANOIA])
+results(despotify,[Despotify])
 
 printf '\n\n##########################################\n\n'
 
