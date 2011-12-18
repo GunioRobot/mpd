@@ -3,8 +3,8 @@
 
 Introduction
 ------------
-This document is a very small amount of documentation about what is needed to 
-install MPD. If more information is desired see the community wiki at 
+This document is a very small amount of documentation about what is needed to
+install MPD. If more information is desired see the community wiki at
 http://mpd.wikia.com.
 
 Dependencies
@@ -208,13 +208,13 @@ runtime.
 A sample config file is included with the source of MPD, mpdconf.example.
 
 The first time MPD is run it will attempt to discover all music in your
-music root, recursively. This can be affected by the symbolic link 
+music root, recursively. This can be affected by the symbolic link
 options specified in the example mpd.conf.
 
 Using MPD
 ---------
 
-You can download many different interfaces for MPD at 
+You can download many different interfaces for MPD at
 	<http://mpd.wikia.com/wiki/Clients>
 
 MPD can be interfaced directly using telnet (see COMMANDS, if you are brave).

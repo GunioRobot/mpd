@@ -2,8 +2,8 @@
 		       Music Player Daemon (MPD)
 			http://www.musicpd.org
 
-A daemon for playing music of various formats.  Music is played through the 
-server's audio device.  The daemon stores info about all available music, 
+A daemon for playing music of various formats.  Music is played through the
+server's audio device.  The daemon stores info about all available music,
 and this info can be easily searched and retrieved.  Player control, info
 retrieval, and playlist management can all be managed remotely.
 

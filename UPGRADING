@@ -55,7 +55,7 @@ Upgrading to 0.10.0
 
 All information is now stored in the db in UTF-8 format, and the character
 set used for the filesystem is stored in the db.  Thus, it is highly
-recommended that you recreate the db.  To do so, run mpd with the 
+recommended that you recreate the db.  To do so, run mpd with the
 "--create-db" command line option.  Also, note that the filesystem
 character set will be determined from your current locale settings.
 If your locale settings are not the same as those used for the filesystem,
@@ -66,11 +66,11 @@ Upgrading to 0.9.3
 ------------------
 
 Wave support was added, so to have your wave files added, update the db (mpc
-update).  
+update).
 
 Also, song lengths are now stored in the db.  To get this stuff
 added to the db, you will need to recreate the db from scratch.  To do this,
-run mpd with the "--create-db" commandline option. 
+run mpd with the "--create-db" commandline option.
 
 Upgrading to 0.9.0
 ------------------
